@@ -1,0 +1,33 @@
+name: トークンを延長する
+
+on:
+  schedule:
+    - cron: "0 18 * * 0"   # 毎週月曜 3:00（日本時間）
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: threads-publish
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 延長
+        env:
+          THREADS_TOKEN: ${{ secrets.THREADS_TOKEN }}
+          TOKEN_KEY: ${{ secrets.TOKEN_KEY }}
+        run: python scripts/refresh_token.py
+      - name: 保存
+        run: |
+          git config user.name "threads-bot"
+          git config user.email "threads-bot@users.noreply.github.com"
+          git add state/token.enc
+          git diff --cached --quiet || (git commit -m "トークンを延長" && git pull --rebase && git push)

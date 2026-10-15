@@ -1,0 +1,35 @@
+name: Threadsを公開する
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: threads-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 時刻が来た投稿を公開
+        env:
+          THREADS_TOKEN: ${{ secrets.THREADS_TOKEN }}
+          TOKEN_KEY: ${{ secrets.TOKEN_KEY }}
+        run: python scripts/publish.py
+      - name: 公開の記録を保存
+        if: always()
+        run: |
+          git config user.name "threads-bot"
+          git config user.email "threads-bot@users.noreply.github.com"
+          git add state/posted.json 2>/dev/null || true
+          git diff --cached --quiet || (git commit -m "公開の記録" && git pull --rebase && git push)
